@@ -1,0 +1,2 @@
+# Needed only for the Detect step. Install the build you want from https://pytorch.org (CPU or CUDA).
+torch
