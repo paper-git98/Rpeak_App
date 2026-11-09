@@ -29,9 +29,9 @@ MODEL_DIR = Path(__file__).parent / "model"
 
 
 @st.cache_resource(show_spinner=False)
-def cached_model(path, mtime, device, bf, ks, kn):
+def cached_model(path, mtime, device, bf=16, ks=7, kn=4):
     import inference as inf          # needs PyTorch
-    return inf.load_model(path, device, bf, ks, kn)
+    return inf.load_model(path, device, base_filters=bf, kernel_size=ks, kernel_num=kn)
 
 
 @st.cache_data
@@ -81,6 +81,9 @@ batch_size = 32# st.sidebar.number_input("Batch size", 1, 512, 16)
 #     bf = st.number_input("Base filters", 1, 256, 8)
 #     ks = st.number_input("Kernel size", 1, 51, 7)
 #     kn = st.number_input("Kernel number", 1, 16, 1)
+bf = 16 # st.number_input("Base filters", 1, 256, 8)
+ks = 7 # st.number_input("Kernel size", 1, 51, 7)
+kn = 4 # st.number_input("Kernel number", 1, 16, 1)
 
 st.sidebar.subheader("R-peak correction settings")
 gap_factor = st.sidebar.slider("Gap threshold ", 1.2, 2.5, 1.6, 0.05,
