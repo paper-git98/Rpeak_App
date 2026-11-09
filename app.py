@@ -61,14 +61,14 @@ def cached_ibis(data):
 
 # ---------------- sidebar ----------------
 st.sidebar.header("Settings")
-FS = st.sidebar.number_input("Sampling rate (Hz)", 1, 5000, 250,
-                              help="Sampling rate of the ECG file. R-peak time (s) x this rate = sample index.")
-window_sec =st.sidebar.number_input("Window length (s)", 1, 60, 4)
-stride_sec = st.sidebar.number_input("Stride (s)", 1, 60, 4)
-sigma_ms = st.sidebar.number_input("Gaussian sigma (ms)", 1, 200, 20)
-min_windows = st.sidebar.number_input("Skip a record with this many windows or fewer", 0, 1000, 10,
-                                      help="Your create_dataset only keeps records with more than 10 windows.")
-zoom = st.sidebar.checkbox("Zoom to the selected record")
+FS = 250 #st.sidebar.number_input("Sampling rate (Hz)", 1, 5000, 250,
+         #                     help="Sampling rate of the ECG file. R-peak time (s) x this rate = sample index.")
+window_sec = 4 #st.sidebar.number_input("Window length (s)", 1, 60, 4)
+stride_sec = 4 #st.sidebar.number_input("Stride (s)", 1, 60, 4)
+sigma_ms = 20 #st.sidebar.number_input("Gaussian sigma (ms)", 1, 200, 20)
+min_windows = 2 #st.sidebar.number_input("Skip a record with this many windows or fewer", 0, 1000, 10,
+         #                     help="Your create_dataset only keeps records with more than 10 windows.")
+# zoom = st.sidebar.checkbox("Zoom to the selected record")
 
 st.sidebar.subheader("Detection settings")
 threshold = st.sidebar.slider("Probability threshold", 0.05, 0.95, 0.5, 0.05)
@@ -76,19 +76,19 @@ min_dist = st.sidebar.number_input("Min. distance between peaks (samples)", 1, 1
                                   help="Non-maximum-suppression window (your pipeline uses 72).")
 tolerance = st.sidebar.number_input("Match tolerance (samples)", 0, 100, 5,
                                     help="A prediction is correct if it is within this many samples of a true peak.")
-batch_size = st.sidebar.number_input("Batch size", 1, 512, 16)
-with st.sidebar.expander("Model settings (only for state_dict files)"):
-    bf = st.number_input("Base filters", 1, 256, 8)
-    ks = st.number_input("Kernel size", 1, 51, 7)
-    kn = st.number_input("Kernel number", 1, 16, 1)
+batch_size = 32# st.sidebar.number_input("Batch size", 1, 512, 16)
+# with st.sidebar.expander("Model settings (only for state_dict files)"):
+#     bf = st.number_input("Base filters", 1, 256, 8)
+#     ks = st.number_input("Kernel size", 1, 51, 7)
+#     kn = st.number_input("Kernel number", 1, 16, 1)
 
 st.sidebar.subheader("R-peak correction settings")
-gap_factor = st.sidebar.slider("Gap threshold (x local RR)", 1.3, 2.5, 1.6, 0.05,
-                               help="An RR interval longer than this x its local median is searched for missed beats.")
-snr = st.sidebar.slider("Sensitivity to small beats (SNR)", 2.0, 15.0, 6.0, 0.5,
+gap_factor = st.sidebar.slider("Gap threshold ", 1.2, 2.5, 1.6, 0.05,
+                               help="An RR interval longer than this x, its local median is searched for missed beats.")
+snr = st.sidebar.slider("Sensitivity to small beats (SNR)", 1.5, 15.0, 6.0, 0.5,
                         help="Lower = finds weaker beats (but may add false ones).")
-dup_factor = st.sidebar.slider("Duplicate threshold (x local RR)", 0.2, 0.8, 0.5, 0.05,
-                               help="Peaks closer than this fraction of the local RR (and always closer than 0.2 s) "
+dup_factor = st.sidebar.slider("Duplicate threshold", 0.2, 0.8, 0.3, 0.05,
+                               help="Peaks closer than this fraction of the local RR "
                                     "are treated as double detections; the highest one is kept.")
 
 # ---------------- upload ----------------
@@ -146,12 +146,12 @@ with plot_box:
             fig.add_vrect(x0=s_sec, x1=e_sec, fillcolor="orange", opacity=0.2, line_width=0, layer="below")
             fig.add_trace(go.Scattergl(x=(a + j) / FS, y=seg[j], mode="lines", name="Selected record",
                                        line=dict(width=1, color="darkorange")))
-            if zoom:
-                fig.update_xaxes(range=[s_sec, e_sec])
+            #if zoom:
+            #    fig.update_xaxes(range=[s_sec, e_sec])
         else:
             st.warning("The selected record lies outside the recording.")
     fig.update_layout(title="ECG", xaxis_title="Time (s)", yaxis_title="Amplitude", hovermode="x",
-                      template="plotly_white", height=450, uirevision=f"{sel}-{zoom}")
+                      template="plotly_white", height=450, uirevision=f"{sel}-{1}")
     st.plotly_chart(fig)
 
 # ---------------- detect (builds the dataset for the selected record, then detects) ----------------
