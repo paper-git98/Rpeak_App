@@ -95,7 +95,7 @@ dup_factor = st.sidebar.slider("Duplicate threshold", 0.2, 0.8, 0.3, 0.05,
                                     "are treated as double detections; the highest one is kept.")
 
 # ---------------- upload ----------------
-st.title("ECG Dataset Builder")
+st.title("R-peak Detection")
 c1, c2, c3 = st.columns(3)
 ecg_f = c1.file_uploader("ECG signal (250 Hz .txt)", type=["txt", "csv", "dat"], key="ecg")
 log_f = c2.file_uploader("Timelog (.csv / .txt)", type=["csv", "txt"], key="timelog")
@@ -114,9 +114,9 @@ except Exception as e:
     st.stop()
 
 with c1:
-    col = st.selectbox("Signal column", range(n_cols), index=3 if n_cols > 3 else n_cols - 1,
-                       format_func=lambda i: f"Column {i + 1}",
-                       help="Expected layout: column 1 = clock time, 2 and 3 = elapsed seconds, 4 = ECG signal.")
+    col = 3  # st.selectbox("Signal column", range(n_cols), index=3 if n_cols > 3 else n_cols - 1,
+    #                format_func=lambda i: f"Column {i + 1}",
+    #                help="Expected layout: column 1 = clock time, 2 and 3 = elapsed seconds, 4 = ECG signal.")
 try:
     ecg = cached_signal(ecg_bytes, col)
 except Exception as e:
