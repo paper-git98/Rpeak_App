@@ -1,8 +1,5 @@
-  streamlit>=1.30
-  plotly>=5.18
-  numpy
-  pandas
-  scipy
-  --extra-index-url https://download.pytorch.org/whl/cpu
-  torch
-  
+streamlit>=1.35
+plotly>=5.18
+numpy
+pandas
+scipy

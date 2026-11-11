@@ -32,7 +32,7 @@ _PICKLE.load = lambda f, **kw: _RemapUnpickler(f, **kw).load()
 _PICKLE.loads = lambda b, **kw: _RemapUnpickler(io.BytesIO(b), **kw).load()
 
 
-def load_model(path, device="cpu", base_filters=16, kernel_size=7, kernel_num=4):
+def load_model(path, device="cpu", base_filters=8, kernel_size=7, kernel_num=1):
     """Load a full pickled model, or a state_dict (then ECGUNet is rebuilt from the given settings)."""
     obj = torch.load(path, map_location=device, weights_only=False, pickle_module=_PICKLE)
     if isinstance(obj, dict):

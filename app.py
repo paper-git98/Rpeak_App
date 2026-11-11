@@ -29,9 +29,9 @@ MODEL_DIR = Path(__file__).parent / "model"
 
 
 @st.cache_resource(show_spinner=False)
-def cached_model(path, mtime, device, bf=16, ks=7, kn=4):
+def cached_model(path, mtime, device, bf, ks, kn):
     import inference as inf          # needs PyTorch
-    return inf.load_model(path, device, base_filters=bf, kernel_size=ks, kernel_num=kn)
+    return inf.load_model(path, device, bf, ks, kn)
 
 
 @st.cache_data
@@ -61,41 +61,38 @@ def cached_ibis(data):
 
 # ---------------- sidebar ----------------
 st.sidebar.header("Settings")
-FS = 250 #st.sidebar.number_input("Sampling rate (Hz)", 1, 5000, 250,
-         #                     help="Sampling rate of the ECG file. R-peak time (s) x this rate = sample index.")
-window_sec = 4 #st.sidebar.number_input("Window length (s)", 1, 60, 4)
-stride_sec = 4 #st.sidebar.number_input("Stride (s)", 1, 60, 4)
-sigma_ms = 20 #st.sidebar.number_input("Gaussian sigma (ms)", 1, 200, 20)
-min_windows = 2 #st.sidebar.number_input("Skip a record with this many windows or fewer", 0, 1000, 10,
-         #                     help="Your create_dataset only keeps records with more than 10 windows.")
-# zoom = st.sidebar.checkbox("Zoom to the selected record")
+FS = st.sidebar.number_input("Sampling rate (Hz)", 1, 5000, 250,
+                             help="Sampling rate of the ECG file. R-peak time (s) x this rate = sample index.")
+window_sec = st.sidebar.number_input("Window length (s)", 1, 60, 4)
+stride_sec = st.sidebar.number_input("Stride (s)", 1, 60, 4)
+sigma_ms = st.sidebar.number_input("Gaussian sigma (ms)", 1, 200, 20)
+min_windows = st.sidebar.number_input("Skip a record with this many windows or fewer", 0, 1000, 10,
+                                      help="Your create_dataset only keeps records with more than 10 windows.")
+zoom = st.sidebar.checkbox("Zoom to the selected record")
 
 st.sidebar.subheader("Detection settings")
 threshold = st.sidebar.slider("Probability threshold", 0.05, 0.95, 0.5, 0.05)
-min_dist = 72 # st.sidebar.number_input("Min. distance between peaks (samples)", 1, 1000, 72,
-             #                     help="Non-maximum-suppression window (your pipeline uses 72).")
+min_dist = st.sidebar.number_input("Min. distance between peaks (samples)", 1, 1000, 72,
+                                   help="Non-maximum-suppression window (your pipeline uses 72).")
 tolerance = st.sidebar.number_input("Match tolerance (samples)", 0, 100, 5,
                                     help="A prediction is correct if it is within this many samples of a true peak.")
-batch_size = 32# st.sidebar.number_input("Batch size", 1, 512, 16)
-# with st.sidebar.expander("Model settings (only for state_dict files)"):
-#     bf = st.number_input("Base filters", 1, 256, 8)
-#     ks = st.number_input("Kernel size", 1, 51, 7)
-#     kn = st.number_input("Kernel number", 1, 16, 1)
-bf = 16 # st.number_input("Base filters", 1, 256, 8)
-ks = 7 # st.number_input("Kernel size", 1, 51, 7)
-kn = 4 # st.number_input("Kernel number", 1, 16, 1)
+batch_size = st.sidebar.number_input("Batch size", 1, 512, 16)
+with st.sidebar.expander("Model settings (only for state_dict files)"):
+    bf = st.number_input("Base filters", 1, 256, 8)
+    ks = st.number_input("Kernel size", 1, 51, 7)
+    kn = st.number_input("Kernel number", 1, 16, 1)
 
 st.sidebar.subheader("R-peak correction settings")
-gap_factor = st.sidebar.slider("Gap threshold ", 1.2, 2.5, 1.6, 0.05,
-                               help="An RR interval longer than this x, its local median is searched for missed beats.")
-snr = st.sidebar.slider("Sensitivity to small beats (SNR)", 1.5, 15.0, 6.0, 0.5,
+gap_factor = st.sidebar.slider("Gap threshold (x local RR)", 1.3, 2.5, 1.6, 0.05,
+                               help="An RR interval longer than this x its local median is searched for missed beats.")
+snr = st.sidebar.slider("Sensitivity to small beats (SNR)", 2.0, 15.0, 6.0, 0.5,
                         help="Lower = finds weaker beats (but may add false ones).")
-dup_factor = st.sidebar.slider("Duplicate threshold", 0.2, 0.8, 0.3, 0.05,
-                               help="Peaks closer than this fraction of the local RR "
+dup_factor = st.sidebar.slider("Duplicate threshold (x local RR)", 0.2, 0.8, 0.5, 0.05,
+                               help="Peaks closer than this fraction of the local RR (and always closer than 0.2 s) "
                                     "are treated as double detections; the highest one is kept.")
 
 # ---------------- upload ----------------
-st.title("R-peak Detection")
+st.title("ECG Dataset Builder")
 c1, c2, c3 = st.columns(3)
 ecg_f = c1.file_uploader("ECG signal (250 Hz .txt)", type=["txt", "csv", "dat"], key="ecg")
 log_f = c2.file_uploader("Timelog (.csv / .txt)", type=["csv", "txt"], key="timelog")
@@ -114,9 +111,9 @@ except Exception as e:
     st.stop()
 
 with c1:
-    col = 3  # st.selectbox("Signal column", range(n_cols), index=3 if n_cols > 3 else n_cols - 1,
-    #                format_func=lambda i: f"Column {i + 1}",
-    #                help="Expected layout: column 1 = clock time, 2 and 3 = elapsed seconds, 4 = ECG signal.")
+    col = st.selectbox("Signal column", range(n_cols), index=3 if n_cols > 3 else n_cols - 1,
+                       format_func=lambda i: f"Column {i + 1}",
+                       help="Expected layout: column 1 = clock time, 2 and 3 = elapsed seconds, 4 = ECG signal.")
 try:
     ecg = cached_signal(ecg_bytes, col)
 except Exception as e:
@@ -149,12 +146,12 @@ with plot_box:
             fig.add_vrect(x0=s_sec, x1=e_sec, fillcolor="orange", opacity=0.2, line_width=0, layer="below")
             fig.add_trace(go.Scattergl(x=(a + j) / FS, y=seg[j], mode="lines", name="Selected record",
                                        line=dict(width=1, color="darkorange")))
-            #if zoom:
-            #    fig.update_xaxes(range=[s_sec, e_sec])
+            if zoom:
+                fig.update_xaxes(range=[s_sec, e_sec])
         else:
             st.warning("The selected record lies outside the recording.")
     fig.update_layout(title="ECG", xaxis_title="Time (s)", yaxis_title="Amplitude", hovermode="x",
-                      template="plotly_white", height=450, uirevision=f"{sel}-{1}")
+                      template="plotly_white", height=450, uirevision=f"{sel}-{zoom}")
     st.plotly_chart(fig)
 
 # ---------------- detect (builds the dataset for the selected record, then detects) ----------------
@@ -237,8 +234,9 @@ if det and ds and det["key"] == det_key:
 
     corr = st.session_state.get("correction")
     if not corr or corr["key"] != det_key:          # new detection -> start from scratch
-        corr = dict(key=det_key, added=EMPTY, removed=EMPTY, msg="")
+        corr = dict(key=det_key, added=EMPTY, removed=EMPTY, manual=EMPTY, msg="")
         st.session_state["correction"] = corr
+    corr.setdefault("manual", EMPTY)
 
     cb1, cb2, _ = st.columns([2, 1, 5])
     if cb1.button("🛠️ Auto-correct R-peaks", type="primary",
@@ -251,21 +249,22 @@ if det and ds and det["key"] == det_key:
                     msg=(f"Removed {len(dups)} duplicate peak(s); added {len(new)} missed peak(s) in {gaps} gap(s)."
                          if len(dups) or len(new) else "Nothing to correct with the current settings."))
     if cb2.button("Reset", key="reset_correction"):
-        corr.update(added=EMPTY, removed=EMPTY, msg="")
+        corr.update(added=EMPTY, removed=EMPTY, manual=EMPTY, msg="")
     if corr["msg"]:
         st.info(corr["msg"])
 
-    added, removed = corr["added"], corr["removed"]
-    final = np.union1d(np.setdiff1d(pred0, removed), added)
+    added, removed, manual = corr["added"], corr["removed"], corr["manual"]
+    final = np.union1d(np.union1d(np.setdiff1d(pred0, removed), added), manual)
 
-    cm = st.columns(5)
+    cm = st.columns(6)
     cm[0].metric("Predicted peaks", len(pred0))
     cm[1].metric("Removed duplicates", len(removed))
     cm[2].metric("Added peaks", len(added))
-    cm[3].metric("Total after correction", len(final))
+    cm[3].metric("Added manually", len(manual))
+    cm[4].metric("Total after correction", len(final))
     if len(true0):
         before, after = count_matched(true0, pred0, tolerance), count_matched(true0, final, tolerance)
-        cm[4].metric(f"True peaks matched (±{tolerance} samples)", f"{after}/{len(true0)}", delta=after - before)
+        cm[5].metric(f"True peaks matched (±{tolerance} samples)", f"{after}/{len(true0)}", delta=after - before)
 
     kk = pl.decimate_idx(ecg_rec)
     fig3 = make_subplots(rows=2, cols=1, shared_xaxes=True, row_heights=[0.62, 0.38], vertical_spacing=0.07)
@@ -282,22 +281,73 @@ if det and ds and det["key"] == det_key:
         fig3.add_trace(go.Scattergl(x=tt(added), y=ecg_rec[added], mode="markers", name="Added R-peaks",
                                     marker=dict(size=9, color="royalblue", symbol="diamond",
                                                 line=dict(width=1, color="black"))), row=1, col=1)
+    if len(manual):
+        fig3.add_trace(go.Scattergl(x=tt(manual), y=ecg_rec[manual], mode="markers", name="Added manually",
+                                    marker=dict(size=11, color="darkorange", symbol="star",
+                                                line=dict(width=1, color="black"))), row=1, col=1)
     if len(pred0) > 1:   # IBI = time between consecutive R-peaks, drawn at the time of the later beat
         fig3.add_trace(go.Scattergl(x=tt(pred0)[1:], y=np.diff(tt(pred0)), mode="lines+markers",
                                     name="IBI (original predicted)", line=dict(width=1.5, color="red"),
                                     marker=dict(size=3)), row=2, col=1)
-    if len(added) or len(removed):
+    if len(added) or len(removed) or len(manual):
         fig3.add_trace(go.Scattergl(x=tt(final)[1:], y=np.diff(tt(final)), mode="lines+markers",
                                     name="IBI (corrected)", line=dict(width=1.5, color="royalblue"),
                                     marker=dict(size=3)), row=2, col=1)
-    fig3.update_layout(title="Predicted R-peaks, corrections and IBI", hovermode="x", template="plotly_white", height=780)
+    fig3.update_layout(title="Predicted R-peaks, corrections and IBI", hovermode="x", template="plotly_white", height=780,
+                       uirevision=str(det_key))   # keep the zoom when the page reruns
     fig3.update_yaxes(title_text="Amplitude", row=1, col=1)
     fig3.update_yaxes(title_text="IBI (s)", row=2, col=1)
     fig3.update_xaxes(title_text="Time (s)", row=2, col=1)
-    st.plotly_chart(fig3)
+    ev = st.plotly_chart(fig3, on_select="rerun", selection_mode=("box",), key="corr_chart")
+
+    # ---- add an R-peak by hand ----
+    n_samp = len(sig)
+    st.markdown("**Add an R-peak manually**")
+    st.caption("Drag a box on the plot (pick the *Box Select* tool in the plot toolbar) to fill From / To with the "
+               "first and last sample of the selected part, or type them. Then enter the sample where the R-peak "
+               f"should be. Samples are counted inside the selected record: sample = (time in s - {t0:g}) x {FS}.")
+    box = None
+    try:
+        boxes = ev["selection"]["box"]
+        if boxes:
+            box = sorted(boxes[0]["x"])
+    except (KeyError, TypeError, IndexError):
+        pass
+    if box:
+        s0 = int(np.clip(np.ceil((box[0] - t0) * FS), 0, n_samp - 1))
+        s1 = int(np.clip(np.floor((box[1] - t0) * FS), 0, n_samp - 1))
+        if (s0, s1) != st.session_state.get("last_box"):      # only when the selection changed
+            st.session_state.update(last_box=(s0, s1), manual_from=s0, manual_to=max(s0, s1))
+    for k in ("manual_from", "manual_to", "manual_loc"):
+        st.session_state[k] = int(min(max(st.session_state.get(k, 0), 0), n_samp - 1))
+
+    mc = st.columns([1, 1, 1, 1])
+    m_from = mc[0].number_input("From (sample)", 0, n_samp - 1, step=1, key="manual_from")
+    m_to = mc[1].number_input("To (sample)", 0, n_samp - 1, step=1, key="manual_to")
+    m_loc = mc[2].number_input("R-peak location (sample)", 0, n_samp - 1, step=1, key="manual_loc")
+    mc[3].markdown("<div style='height:1.9rem'></div>", unsafe_allow_html=True)
+    if mc[3].button("Add", type="primary", key="manual_add"):
+        if m_from >= m_to:
+            st.session_state["manual_msg"] = ("error", "'From' must be smaller than 'To'.")
+        elif not (m_from <= m_loc <= m_to):
+            st.session_state["manual_msg"] = ("error", f"The R-peak location must lie between {m_from} and {m_to}.")
+        elif m_loc in final:
+            st.session_state["manual_msg"] = ("warning", f"There is already an R-peak at sample {m_loc}.")
+        else:
+            near = final[np.abs(final - m_loc) < 0.2 * FS]          # closer than 200 ms to another peak
+            corr["manual"] = np.union1d(manual, [m_loc]).astype(np.int64)
+            note = (f" It is only {int(np.abs(near - m_loc).min())} samples from another R-peak - "
+                    "check that it is not a duplicate." if len(near) else "")
+            st.session_state["manual_msg"] = ("success", f"Added an R-peak at sample {m_loc} "
+                                                         f"({tt(m_loc):.3f} s); the IBIs were updated.{note}")
+            st.rerun()
+        st.rerun()
+    if "manual_msg" in st.session_state:
+        kind, text = st.session_state["manual_msg"]
+        getattr(st, kind)(text)
 
     # downloads: always present and closed; nothing downloads unless you click
-    ran = bool(corr["msg"])
+    ran = bool(corr["msg"]) or len(manual) > 0
     with st.expander("⬇️ Download corrected R-peaks and IBIs"):
         if not ran:
             st.caption("Run 'Auto-correct R-peaks' first to enable the downloads.")
@@ -312,14 +362,17 @@ if det and ds and det["key"] == det_key:
         dc = st.columns(4)
         dc[0].download_button("R-peaks (CSV)", pk_df.to_csv(index=False), file_name="corrected_rpeaks.csv",
                               mime="text/csv", disabled=not ran)
-        # dc[1].download_button("R-peaks (.npy)", pk_buf.getvalue(), file_name="corrected_rpeaks.npy", disabled=not ran)
+        dc[1].download_button("R-peaks (.npy)", pk_buf.getvalue(), file_name="corrected_rpeaks.npy", disabled=not ran)
         dc[2].download_button("IBIs (CSV)", ibi_df.to_csv(index=False), file_name="corrected_ibis.csv",
                               mime="text/csv", disabled=not ran)
-        # dc[3].download_button("IBIs (.npy)", ibi_buf.getvalue(), file_name="corrected_ibis.npy", disabled=not ran)
+        dc[3].download_button("IBIs (.npy)", ibi_buf.getvalue(), file_name="corrected_ibis.npy", disabled=not ran)
         st.caption("Sample indices are given inside the selected record (npy files) and inside the whole recording (CSV).")
         if len(added):
             st.caption(f"{len(added)} added peaks:")
             st.dataframe(pd.DataFrame({"sample_index_in_record": added, "time_s": tt(added)}))
+        if len(manual):
+            st.caption(f"{len(manual)} peaks added manually:")
+            st.dataframe(pd.DataFrame({"sample_index_in_record": manual, "time_s": tt(manual)}))
         if len(removed):
             st.caption(f"{len(removed)} removed duplicate peaks:")
             st.dataframe(pd.DataFrame({"sample_index_in_record": removed, "time_s": tt(removed)}))
