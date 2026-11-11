@@ -72,8 +72,8 @@ min_windows = 2 #st.sidebar.number_input("Skip a record with this many windows o
 
 st.sidebar.subheader("Detection settings")
 threshold = st.sidebar.slider("Probability threshold", 0.05, 0.95, 0.5, 0.05)
-min_dist = st.sidebar.number_input("Min. distance between peaks (samples)", 1, 1000, 72,
-                                  help="Non-maximum-suppression window (your pipeline uses 72).")
+min_dist = 72 # st.sidebar.number_input("Min. distance between peaks (samples)", 1, 1000, 72,
+             #                     help="Non-maximum-suppression window (your pipeline uses 72).")
 tolerance = st.sidebar.number_input("Match tolerance (samples)", 0, 100, 5,
                                     help="A prediction is correct if it is within this many samples of a true peak.")
 batch_size = 32# st.sidebar.number_input("Batch size", 1, 512, 16)
