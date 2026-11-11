@@ -83,12 +83,12 @@ ks = 7
 kn = 4
 
 st.sidebar.subheader("R-peak correction settings")
-gap_factor = st.sidebar.slider("Gap threshold (x local RR)", 1.3, 2.5, 1.6, 0.05,
+gap_factor = st.sidebar.slider("Gap threshold ", 1.2, 2.5, 1.6, 0.05,
                                help="An RR interval longer than this x its local median is searched for missed beats.")
-snr = st.sidebar.slider("Sensitivity to small beats (SNR)", 2.0, 15.0, 6.0, 0.5,
-                        help="Lower = finds weaker beats (but may add false ones).")
-dup_factor = st.sidebar.slider("Duplicate threshold (x local RR)", 0.2, 0.8, 0.5, 0.05,
-                               help="Peaks closer than this fraction of the local RR (and always closer than 0.2 s) "
+snr = st.sidebar.slider("Sensitivity to small beats ", 1.5, 15.0, 6.0, 0.5,
+                        help="Lower = finds weaker beats .")
+dup_factor = st.sidebar.slider("Duplicate threshold ", 0.1, 0.8, 0.4, 0.05,
+                               help="Peaks closer than this fraction of the local RR (and always closer than 0.1 s) "
                                     "are treated as double detections; the highest one is kept.")
 
 # ---------------- upload ----------------
