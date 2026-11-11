@@ -11,7 +11,7 @@ import streamlit.components.v1 as components
 import pipeline as pl
 from rpeak_utils import count_matched, find_missed_rpeaks, remove_duplicate_rpeaks
 
-st.set_page_config(page_title="ECG Dataset Builder", layout="wide")
+st.set_page_config(page_title="R-peak Detector", layout="wide")
 
 PAGE_BG = "#FFFFFF"     # main page background
 SIDEBAR_BG = "#D5DEEA"  # sidebar background
@@ -86,8 +86,10 @@ kn = 4
 st.sidebar.subheader("R-peak correction settings")
 gap_factor = st.sidebar.slider("Gap threshold ", 1.2, 2.5, 1.6, 0.05,
                                help="An RR interval longer than this x its local median is searched for missed beats.")
-snr = st.sidebar.slider("Sensitivity to small beats ", 1.5, 15.0, 6.0, 0.5,
+snr = st.sidebar.slider("Sensitivity to small beats ", 1.4, 15.0, 6.0, 0.5,
                         help="Lower = finds weaker beats .")
+
+
 dup_factor = st.sidebar.slider("Duplicate threshold ", 0.1, 0.8, 0.4, 0.05,
                                help="Peaks closer than this fraction of the local RR (and always closer than 0.1 s) "
                                     "are treated as double detections; the highest one is kept.")
