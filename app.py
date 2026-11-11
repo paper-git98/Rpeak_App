@@ -82,6 +82,7 @@ bf = 16
 ks = 7
 kn = 4
 
+
 st.sidebar.subheader("R-peak correction settings")
 gap_factor = st.sidebar.slider("Gap threshold ", 1.2, 2.5, 1.6, 0.05,
                                help="An RR interval longer than this x its local median is searched for missed beats.")
@@ -91,6 +92,8 @@ dup_factor = st.sidebar.slider("Duplicate threshold ", 0.1, 0.8, 0.4, 0.05,
                                help="Peaks closer than this fraction of the local RR (and always closer than 0.1 s) "
                                     "are treated as double detections; the highest one is kept.")
  
+ 
+# 1
 # ---------------- upload ----------------
 st.title("ECG Dataset Builder")
 c1, c2, c3 = st.columns(3)
