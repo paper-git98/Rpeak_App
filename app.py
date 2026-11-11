@@ -274,7 +274,8 @@ if det and ds and det["key"] == det_key:
                                 marker=dict(size=5, color="red")), row=1, col=1)
     if len(true0):
         fig3.add_trace(go.Scattergl(x=tt(true0), y=ecg_rec[true0], mode="markers", name="True R-peaks",
-                                    marker=dict(size=5, color="green")), row=1, col=1)
+                                    marker=dict(size=9, symbol="circle-open", color="green",
+                                                line=dict(width=1.5, color="green"))), row=1, col=1)
     if len(removed):
         fig3.add_trace(go.Scattergl(x=tt(removed), y=ecg_rec[removed], mode="markers", name="Removed duplicates",
                                     marker=dict(size=9, color="black", symbol="x")), row=1, col=1)
