@@ -12,11 +12,7 @@ import pipeline as pl
 from rpeak_utils import count_matched, find_missed_rpeaks, remove_duplicate_rpeaks
 
 st.set_page_config(page_title="ECG Dataset Builder", layout="wide")
-st.markdown("""
-<style>
-[data-testid="stToolbar"] {visibility: hidden;}
-</style>
-""", unsafe_allow_html=True)
+
 PAGE_BG = "#FFFFFF"     # main page background
 SIDEBAR_BG = "#D5DEEA"  # sidebar background
 st.markdown(f"""
