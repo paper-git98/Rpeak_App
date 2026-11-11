@@ -92,8 +92,9 @@ dup_factor = st.sidebar.slider("Duplicate threshold ", 0.1, 0.8, 0.4, 0.05,
                                help="Peaks closer than this fraction of the local RR (and always closer than 0.1 s) "
                                     "are treated as double detections; the highest one is kept.")
  
- 
-# 1
+  
+# 1 
+
 # ---------------- upload ----------------
 st.title("ECG Dataset Builder")
 c1, c2, c3 = st.columns(3)
