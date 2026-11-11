@@ -6,6 +6,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
+import streamlit.components.v1 as components
 
 import pipeline as pl
 from rpeak_utils import count_matched, find_missed_rpeaks, remove_duplicate_rpeaks
@@ -26,6 +27,8 @@ st.markdown(f"""
 
 
 MODEL_DIR = Path(__file__).parent / "model"
+# plot that reports its visible x-range (zoom) back to Python
+zoom_plot = components.declare_component("zoom_plot", path=str(Path(__file__).parent / "components" / "zoom_plot"))
 
 
 @st.cache_resource(show_spinner=False)
@@ -298,26 +301,21 @@ if det and ds and det["key"] == det_key:
     fig3.update_yaxes(title_text="Amplitude", row=1, col=1)
     fig3.update_yaxes(title_text="IBI (s)", row=2, col=1)
     fig3.update_xaxes(title_text="Time (s)", row=2, col=1)
-    ev = st.plotly_chart(fig3, on_select="rerun", selection_mode=("box",), key="corr_chart")
+    zoom = zoom_plot(fig_json=fig3.to_json(), height=780, key="corr_chart", default=None)
 
     # ---- add an R-peak by hand ----
     n_samp = len(sig)
     st.markdown("**Add an R-peak manually**")
-    st.caption("Drag a box on the plot (pick the *Box Select* tool in the plot toolbar) to fill From / To with the "
-               "first and last sample of the selected part, or type them. Then enter the sample where the R-peak "
-               f"should be. Samples are counted inside the selected record: sample = (time in s - {t0:g}) x {FS}.")
-    box = None
-    try:
-        boxes = ev["selection"]["box"]
-        if boxes:
-            box = sorted(boxes[0]["x"])
-    except (KeyError, TypeError, IndexError):
-        pass
-    if box:
-        s0 = int(np.clip(np.ceil((box[0] - t0) * FS), 0, n_samp - 1))
-        s1 = int(np.clip(np.floor((box[1] - t0) * FS), 0, n_samp - 1))
-        if (s0, s1) != st.session_state.get("last_box"):      # only when the selection changed
-            st.session_state.update(last_box=(s0, s1), manual_from=s0, manual_to=max(s0, s1))
+    st.caption("Zoom into the part of the plot you want (drag on the plot): From and To are filled with the first and "
+               "last sample of the visible part. Then enter the sample where the R-peak should be and press Add. "
+               f"Samples are counted inside the selected record: sample = (time in s - {t0:g}) x {FS}.")
+    st.session_state.setdefault("manual_from", 0)
+    st.session_state.setdefault("manual_to", n_samp - 1)
+    if zoom and "x0" in zoom:
+        s0 = int(np.clip(np.ceil(round((zoom["x0"] - t0) * FS, 4)), 0, n_samp - 1))
+        s1 = int(np.clip(np.floor(round((zoom["x1"] - t0) * FS, 4)), 0, n_samp - 1))
+        if (s0, s1) != st.session_state.get("last_zoom"):      # only when the zoom changed
+            st.session_state.update(last_zoom=(s0, s1), manual_from=s0, manual_to=max(s0, s1))
     for k in ("manual_from", "manual_to", "manual_loc"):
         st.session_state[k] = int(min(max(st.session_state.get(k, 0), 0), n_samp - 1))
 
@@ -356,17 +354,12 @@ if det and ds and det["key"] == det_key:
                               "time_s": tt(final)})
         ibi_df = pd.DataFrame({"sample_index_in_record": final[1:], "time_s": tt(final)[1:],
                                "ibi_s": np.diff(tt(final))})
-        pk_buf, ibi_buf = io.BytesIO(), io.BytesIO()
-        np.save(pk_buf, final)
-        np.save(ibi_buf, ibi_df["ibi_s"].to_numpy())
         dc = st.columns(4)
         dc[0].download_button("R-peaks (CSV)", pk_df.to_csv(index=False), file_name="corrected_rpeaks.csv",
                               mime="text/csv", disabled=not ran)
-        dc[1].download_button("R-peaks (.npy)", pk_buf.getvalue(), file_name="corrected_rpeaks.npy", disabled=not ran)
-        dc[2].download_button("IBIs (CSV)", ibi_df.to_csv(index=False), file_name="corrected_ibis.csv",
+        dc[1].download_button("IBIs (CSV)", ibi_df.to_csv(index=False), file_name="corrected_ibis.csv",
                               mime="text/csv", disabled=not ran)
-        dc[3].download_button("IBIs (.npy)", ibi_buf.getvalue(), file_name="corrected_ibis.npy", disabled=not ran)
-        st.caption("Sample indices are given inside the selected record (npy files) and inside the whole recording (CSV).")
+        st.caption("The R-peak CSV gives sample indices inside the selected record and inside the whole recording; the IBI CSV gives sample index, time and IBI in seconds.")
         if len(added):
             st.caption(f"{len(added)} added peaks:")
             st.dataframe(pd.DataFrame({"sample_index_in_record": added, "time_s": tt(added)}))

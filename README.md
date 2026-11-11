@@ -16,5 +16,6 @@ Results stay in st.session_state: "dataset" (X, Y, real_target), "detection" (pr
 To confirm the model code is identical to yours:
     python verify_architecture.py path/to/your_original_file.py
 
-Manual R-peak add: under the correction plot, drag a box (Box Select tool) to fill From / To, type the sample of
-the R-peak and press Add. The peak is added to the list, the IBI plot and the downloads.
+Manual R-peak add: zoom into a part of the correction plot (drag on it) - From / To are filled with the first and
+last sample of the visible part. Type the sample of the R-peak and press Add. The peak is added to the list,
+the IBI plot and the CSV downloads. The plot is a small custom component in components/zoom_plot.
