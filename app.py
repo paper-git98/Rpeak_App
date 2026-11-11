@@ -111,9 +111,9 @@ except Exception as e:
     st.stop()
 
 with c1:
-    col = st.selectbox("Signal column", range(n_cols), index=3 if n_cols > 3 else n_cols - 1,
-                       format_func=lambda i: f"Column {i + 1}",
-                       help="Expected layout: column 1 = clock time, 2 and 3 = elapsed seconds, 4 = ECG signal.")
+    col = 3# st.selectbox("Signal column", range(n_cols), index=3 if n_cols > 3 else n_cols - 1,
+             #          format_func=lambda i: f"Column {i + 1}",
+              #         help="Expected layout: column 1 = clock time, 2 and 3 = elapsed seconds, 4 = ECG signal.")
 try:
     ecg = cached_signal(ecg_bytes, col)
 except Exception as e:
