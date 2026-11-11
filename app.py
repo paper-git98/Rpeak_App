@@ -64,26 +64,23 @@ def cached_ibis(data):
 
 # ---------------- sidebar ----------------
 st.sidebar.header("Settings")
-FS = st.sidebar.number_input("Sampling rate (Hz)", 1, 5000, 250,
-                             help="Sampling rate of the ECG file. R-peak time (s) x this rate = sample index.")
-window_sec = st.sidebar.number_input("Window length (s)", 1, 60, 4)
-stride_sec = st.sidebar.number_input("Stride (s)", 1, 60, 4)
-sigma_ms = st.sidebar.number_input("Gaussian sigma (ms)", 1, 200, 20)
-min_windows = st.sidebar.number_input("Skip a record with this many windows or fewer", 0, 1000, 10,
-                                      help="Your create_dataset only keeps records with more than 10 windows.")
-zoom = st.sidebar.checkbox("Zoom to the selected record")
+FS = 250             # sampling rate of the ECG file (R-peak time (s) x FS = sample index)
+window_sec = 4
+stride_sec = 4
+sigma_ms = 20
+min_windows = 3      # a record with this many windows or fewer is skipped
 
 st.sidebar.subheader("Detection settings")
 threshold = st.sidebar.slider("Probability threshold", 0.05, 0.95, 0.5, 0.05)
-min_dist = st.sidebar.number_input("Min. distance between peaks (samples)", 1, 1000, 72,
-                                   help="Non-maximum-suppression window (your pipeline uses 72).")
+min_dist = 72        # non-maximum-suppression window (samples)
 tolerance = st.sidebar.number_input("Match tolerance (samples)", 0, 100, 5,
                                     help="A prediction is correct if it is within this many samples of a true peak.")
-batch_size = st.sidebar.number_input("Batch size", 1, 512, 16)
-with st.sidebar.expander("Model settings (only for state_dict files)"):
-    bf = st.number_input("Base filters", 1, 256, 8)
-    ks = st.number_input("Kernel size", 1, 51, 7)
-    kn = st.number_input("Kernel number", 1, 16, 1)
+batch_size = 32
+
+# model settings, only used when the model file is a state_dict
+bf = 16
+ks = 7
+kn = 4
 
 st.sidebar.subheader("R-peak correction settings")
 gap_factor = st.sidebar.slider("Gap threshold (x local RR)", 1.3, 2.5, 1.6, 0.05,
@@ -149,12 +146,10 @@ with plot_box:
             fig.add_vrect(x0=s_sec, x1=e_sec, fillcolor="orange", opacity=0.2, line_width=0, layer="below")
             fig.add_trace(go.Scattergl(x=(a + j) / FS, y=seg[j], mode="lines", name="Selected record",
                                        line=dict(width=1, color="darkorange")))
-            if zoom:
-                fig.update_xaxes(range=[s_sec, e_sec])
         else:
             st.warning("The selected record lies outside the recording.")
     fig.update_layout(title="ECG", xaxis_title="Time (s)", yaxis_title="Amplitude", hovermode="x",
-                      template="plotly_white", height=450, uirevision=f"{sel}-{zoom}")
+                      template="plotly_white", height=450, uirevision=f"{sel}")
     st.plotly_chart(fig)
 
 # ---------------- detect (builds the dataset for the selected record, then detects) ----------------
@@ -244,12 +239,15 @@ if det and ds and det["key"] == det_key:
     cb1, cb2, _ = st.columns([2, 1, 5])
     if cb1.button("🛠️ Auto-correct R-peaks", type="primary",
                   help="Removes duplicate (too close) peaks, then adds missed ones."):
-        dups = remove_duplicate_rpeaks(ecg_rec, pred0, FS, dup_factor)
+        manual_now = corr["manual"]
+        dups = remove_duplicate_rpeaks(ecg_rec, pred0, FS, dup_factor)      # never removes a manual peak
         kept = np.setdiff1d(pred0, dups)
-        new, gaps = find_missed_rpeaks(ecg_rec, kept, FS, gap_factor, snr)
-        new = np.setdiff1d(new, pred0)
+        # the manual peaks count as existing peaks, so the gaps they fill are not searched again
+        new, gaps = find_missed_rpeaks(ecg_rec, np.union1d(kept, manual_now), FS, gap_factor, snr)
+        new = np.setdiff1d(new, np.union1d(pred0, manual_now))
         corr.update(added=new, removed=dups,
-                    msg=(f"Removed {len(dups)} duplicate peak(s); added {len(new)} missed peak(s) in {gaps} gap(s)."
+                    msg=(f"Removed {len(dups)} duplicate peak(s); added {len(new)} missed peak(s) in {gaps} gap(s)"
+                         + (f"; kept your {len(manual_now)} manual peak(s)." if len(manual_now) else ".")
                          if len(dups) or len(new) else "Nothing to correct with the current settings."))
     if cb2.button("Reset", key="reset_correction"):
         corr.update(added=EMPTY, removed=EMPTY, manual=EMPTY, msg="")
@@ -301,7 +299,7 @@ if det and ds and det["key"] == det_key:
     fig3.update_yaxes(title_text="Amplitude", row=1, col=1)
     fig3.update_yaxes(title_text="IBI (s)", row=2, col=1)
     fig3.update_xaxes(title_text="Time (s)", row=2, col=1)
-    zoom = zoom_plot(fig_json=fig3.to_json(), height=780, key="corr_chart", default=None)
+    zoom_val = zoom_plot(fig_json=fig3.to_json(), height=780, key="corr_chart", default=None)
 
     # ---- add an R-peak by hand ----
     n_samp = len(sig)
@@ -311,9 +309,9 @@ if det and ds and det["key"] == det_key:
                f"Samples are counted inside the selected record: sample = (time in s - {t0:g}) x {FS}.")
     st.session_state.setdefault("manual_from", 0)
     st.session_state.setdefault("manual_to", n_samp - 1)
-    if zoom and "x0" in zoom:
-        s0 = int(np.clip(np.ceil(round((zoom["x0"] - t0) * FS, 4)), 0, n_samp - 1))
-        s1 = int(np.clip(np.floor(round((zoom["x1"] - t0) * FS, 4)), 0, n_samp - 1))
+    if zoom_val and "x0" in zoom_val:
+        s0 = int(np.clip(np.ceil(round((zoom_val["x0"] - t0) * FS, 4)), 0, n_samp - 1))
+        s1 = int(np.clip(np.floor(round((zoom_val["x1"] - t0) * FS, 4)), 0, n_samp - 1))
         if (s0, s1) != st.session_state.get("last_zoom"):      # only when the zoom changed
             st.session_state.update(last_zoom=(s0, s1), manual_from=s0, manual_to=max(s0, s1))
     for k in ("manual_from", "manual_to", "manual_loc"):

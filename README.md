@@ -16,6 +16,9 @@ Results stay in st.session_state: "dataset" (X, Y, real_target), "detection" (pr
 To confirm the model code is identical to yours:
     python verify_architecture.py path/to/your_original_file.py
 
+Fixed settings (sampling rate 250 Hz, 4 s windows, ...) are set at the top of app.py.
+Auto-correct treats manually added peaks as existing peaks and never adds or removes them.
+
 Manual R-peak add: zoom into a part of the correction plot (drag on it) - From / To are filled with the first and
 last sample of the visible part. Type the sample of the R-peak and press Add. The peak is added to the list,
 the IBI plot and the CSV downloads. The plot is a small custom component in components/zoom_plot.
